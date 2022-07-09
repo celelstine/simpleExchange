@@ -4,7 +4,9 @@
   "description": "playground for grenache",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start_servers": "grape --dp 20001 --aph 30001 --bn '127.0.0.1:20001' & grape --dp 20002 --aph 40001 --bn '127.0.0.1:20002'",
+    "start": "node start_servers && node index.js"
   },
   "keywords": [
     "microservice"
