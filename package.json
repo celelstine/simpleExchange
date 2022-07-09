@@ -1,12 +1,14 @@
 {
   "name": "grenacehe",
+  "type": "module",
   "version": "1.0.0",
   "description": "playground for grenache",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "babel src -d build",
     "start_servers": "grape --dp 20001 --aph 30001 --bn '127.0.0.1:20001' & grape --dp 20002 --aph 40001 --bn '127.0.0.1:20002'",
-    "start": "node start_servers && node index.js"
+    "start": "npm run build && node build/index.js"
   },
   "keywords": [
     "microservice"
@@ -14,7 +16,16 @@
   "author": "okorocelestine@gmail.com",
   "license": "ISC",
   "dependencies": {
+    "@babel/core": "^7.18.6",
+    "babel-preset-es2015": "^6.24.1",
+    "core-js": "^3.23.3",
     "grenache-nodejs-link": "^0.7.12",
-    "grenache-nodejs-ws": "^0.7.10"
+    "grenache-nodejs-ws": "^0.7.10",
+    "regenerator-runtime": "^0.13.9"
+  },
+  "devDependencies": {
+    "@babel/plugin-transform-modules-commonjs": "^7.18.6",
+    "@babel/preset-env": "^7.18.6",
+    "babel-preset-env": "^1.7.0"
   }
 }

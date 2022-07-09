@@ -1,36 +1,34 @@
-'use strict'
-const { PeerRPCServer } = require('grenache-nodejs-ws')
-const Link = require('grenache-nodejs-link')
+import { PeerRPCServer } from 'grenache-nodejs-ws';
+import  Link from 'grenache-nodejs-link';
 
-const {
+import  {
   NEW_CLIENT_ORDER,
   NEW_ORDER,
   CLAIM_REQUEST,
   CLAIM_GRANTED,
-  ORDER_LOCK,
   ORDER_CLOSED,
   SERVICE_NAME
-} = require('./types');
+} from './types';
 
 
 export class OrderServer {
   constructor(ID) {
-    this.ID = id;
+    this.ID = ID;
     this.port = ID;
     this.orders = {};
     this.processers = {
-      NEW_CLIENT_ORDER: this.processNewClientOrder,
-      NEW_ORDER: this.processNewOrder,
-      CLAIM_REQUEST: this.handleClaimRequest,
-      CLAIM_GRANTED: this.processClaimGranted,
-      ORDER_CLOSED: this.processOrderClosed
+      [NEW_CLIENT_ORDER]: this.processNewClientOrder,
+      [NEW_ORDER]: this.processNewOrder,
+      [CLAIM_REQUEST]: this.handleClaimRequest,
+      [CLAIM_GRANTED]: this.processClaimGranted,
+      [ORDER_CLOSED]: this.processOrderClosed
     }
-    this.setupServer(this.port);
+    this.setupServer();
   }
 
   setupServer() {
     const link = new Link({
-      grape: 'http://127.0.0.1:30001'
+      grape: 'http://127.0.0.1:20001'
     });
     
     link.start()
@@ -38,7 +36,7 @@ export class OrderServer {
     this.peer = new PeerRPCServer(link, {})
     this.peer.init()
 
-    const service = peer.transport('server');
+    const service = this.peer.transport('server');
     service.listen(this.port);
 
     setInterval(() => {

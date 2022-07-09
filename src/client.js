@@ -1,7 +1,7 @@
-'use strict'
-const { PeerRPCClient } = require('grenache-nodejs-ws')
-const Link = require('grenache-nodejs-link')
-const { NEW_CLIENT_ORDER, SERVICE_NAME } = require('./types');
+
+import { PeerRPCClient } from "grenache-nodejs-ws";
+import Link from "grenache-nodejs-link";
+import {NEW_CLIENT_ORDER, SERVICE_NAME} from './types';
 
 
 export function getClient(serverID) {
