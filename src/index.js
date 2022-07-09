@@ -1,5 +1,3 @@
-'use strict'
-
 import  { getClient }  from './client';
 import { OrderServer } from './server';
 

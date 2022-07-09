@@ -58,7 +58,6 @@ export class OrderServer {
       // only call processr when the server is not the sender and it's the recipient
       // when recipient is null browsers to all
       if (requester != this.ID &&  !(recipient && recipient == this.ID)) {
-        console.log('handled', this.processers[reqType]);
         const reqProcessor = this.processers[reqType];
         reqProcessor(handler, payload)
       }
@@ -68,7 +67,7 @@ export class OrderServer {
     this.peer.init();
   }
 
-  processNewClientOrder(handler, payload) {
+  async processNewClientOrder(handler, payload) {
     const order = {
       ...payload,
       serverId: this.ID, //this would stay constant to mark the initiator
@@ -80,23 +79,24 @@ export class OrderServer {
 
     handler.reply(null, 'Order received');
 
-    this.broadcastOrder({
+    await this.broadcastOrder({
       ...order,
       reqType: NEW_ORDER
     });
   }
 
-  processNewOrder(handler, payload) {
+  async processNewOrder(handler, payload) {
     // add to orders
     this.orders[payload.orderID] = payload;
     // check if server can fullfill it, if yes request claim
-    const fullfillingOrderID = this.getfullfillingOrderID(payload)
+    const fullfillingOrderID = await this.getfullfillingOrderID(payload)
     if (fullfillingOrderID) {
       this.orders[fullfillingOrderID] = {
         ...this.orders[fullfillingOrderID],
         lockedFor: payload.orderID,
       }
-      this.broadcastOrder({
+
+      await this.broadcastOrder({
         ...payload,
         reqType: CLAIM_REQUEST,
         requester: this.ID,
@@ -163,14 +163,14 @@ export class OrderServer {
 
   }
 
-  handleClaimRequest(handler, payload) {
+  async handleClaimRequest(handler, payload) {
     let order = this.orders[payload.orderID];
 
     if (!order['lockedServerID']) {
       order['lockedServerID'] = payload.requester;
       this.orders[order.orderID] = order;
 
-      this.broadcastOrder({
+      await this.broadcastOrder({
         ...order,
         reqType: CLAIM_GRANTED,
         requester: this.ID,
@@ -180,7 +180,7 @@ export class OrderServer {
 
   }
 
-  getfullfillingOrderID(order) {
+  async getfullfillingOrderID(order) {
     const { toCoin, toAmount} = order;
     // we check if we have an order that can match this
     // IE that has enough from amount and corresponding from coin
@@ -194,8 +194,7 @@ export class OrderServer {
 
   }
 
-  broadcastOrder(payload) {
-    console.log('payload', payload)
+  async broadcastOrder(payload) {
     this.peer.request(SERVICE_NAME, payload, { timeout: 1000}, (err, result) => {
       if (err) throw err
     });
