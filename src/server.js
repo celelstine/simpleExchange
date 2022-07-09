@@ -1,4 +1,4 @@
-import { PeerRPCServer } from 'grenache-nodejs-ws';
+import { PeerRPCServer, PeerRPCClient } from 'grenache-nodejs-ws';
 import  Link from 'grenache-nodejs-link';
 
 import  {
@@ -8,7 +8,7 @@ import  {
   CLAIM_GRANTED,
   ORDER_CLOSED,
   SERVICE_NAME
-} from './types';
+} from './constants';
 
 
 export class OrderServer {
@@ -16,6 +16,16 @@ export class OrderServer {
     this.ID = ID;
     this.port = ID;
     this.orders = {};
+
+    this.processNewClientOrder = this.processNewClientOrder.bind(this);
+    this.processNewOrder = this.processNewOrder.bind(this)
+    this.handleClaimRequest = this.handleClaimRequest.bind(this);
+    this.processClaimGranted = this.processClaimGranted.bind(this);
+    this.processOrderClosed = this.processOrderClosed.bind(this);
+    this.setupServer = this.setupServer.bind(this);
+    this.broadcastOrder = this.broadcastOrder.bind(this);
+    this.getfullfillingOrderID = this.getfullfillingOrderID.bind(this);
+
     this.processers = {
       [NEW_CLIENT_ORDER]: this.processNewClientOrder,
       [NEW_ORDER]: this.processNewOrder,
@@ -28,15 +38,15 @@ export class OrderServer {
 
   setupServer() {
     const link = new Link({
-      grape: 'http://127.0.0.1:20001'
+      grape: 'http://127.0.0.1:30001'
     });
     
     link.start()
     
-    this.peer = new PeerRPCServer(link, {})
-    this.peer.init()
+    const peer = new PeerRPCServer(link, {})
+    peer.init()
 
-    const service = this.peer.transport('server');
+    const service = peer.transport('server');
     service.listen(this.port);
 
     setInterval(() => {
@@ -44,22 +54,26 @@ export class OrderServer {
     }, 1000);
 
     service.on('request', (rid, key, payload, handler) => {
-      const { reqType, Requester, Recipient: None } = payload;
+      const { reqType, requester, recipient } = payload;
       // only call processr when the server is not the sender and it's the recipient
-      // when Recipient is null browsers to all
-      if (Requester != serverPort &&  (Recipient && recipient == this.ID)) {
-        const reqprocessr = this.processers[reqType];
-        reqprocessr(handler, payload)
+      // when recipient is null browsers to all
+      if (requester != this.ID &&  !(recipient && recipient == this.ID)) {
+        console.log('handled', this.processers[reqType]);
+        const reqProcessor = this.processers[reqType];
+        reqProcessor(handler, payload)
       }
     });
+
+    this.peer = new PeerRPCClient(link, {});
+    this.peer.init();
   }
 
   processNewClientOrder(handler, payload) {
     const order = {
       ...payload,
       serverId: this.ID, //this would stay constant to mark the initiator
-      Requester: this.ID, // so that same server do not process itself request
-      recipient: None //allow other recieve it
+      requester: this.ID, // so that same server do not process itself request
+      recipient: null //allow other recieve it
     }
 
     this.orders[order.orderID] = order;
@@ -78,21 +92,21 @@ export class OrderServer {
     // check if server can fullfill it, if yes request claim
     const fullfillingOrderID = this.getfullfillingOrderID(payload)
     if (fullfillingOrderID) {
-      this.orders[getfullfillingOrderID] = {
-        ...this.orders[getfullfillingOrderID],
+      this.orders[fullfillingOrderID] = {
+        ...this.orders[fullfillingOrderID],
         lockedFor: payload.orderID,
       }
       this.broadcastOrder({
-        ...order,
+        ...payload,
         reqType: CLAIM_REQUEST,
-        Requester: this.ID,
-        Recipient: payload.Requester // the request would grant on FIFO
+        requester: this.ID,
+        recipient: payload.requester // the request would grant on FIFO
       });
     }
   }
 
   processClaimGranted(handler, payload) {
-    const { lockedServerID, orderID, Requester } = payload;
+    const { lockedServerID, orderID, requester } = payload;
 
     if (lockedServerID == this.ID) {
       this.orders[orderID] = payload;
@@ -101,8 +115,8 @@ export class OrderServer {
       this.broadcastOrder({
         ...order,
         reqType: ORDER_CLOSED,
-        Requester: this.ID,
-        Recipient: Requester, // the request would grant on FIFO
+        requester: this.ID,
+        recipient: requester, // the request would grant on FIFO
       });
     } else {
       delete this.orders[orderID];
@@ -153,14 +167,14 @@ export class OrderServer {
     let order = this.orders[payload.orderID];
 
     if (!order['lockedServerID']) {
-      order['lockedServerID'] = payload.Requester;
+      order['lockedServerID'] = payload.requester;
       this.orders[order.orderID] = order;
 
       this.broadcastOrder({
         ...order,
         reqType: CLAIM_GRANTED,
-        Requester: this.ID,
-        Recipient: None
+        requester: this.ID,
+        recipient: null
       });
     }
 
@@ -181,9 +195,9 @@ export class OrderServer {
   }
 
   broadcastOrder(payload) {
+    console.log('payload', payload)
     this.peer.request(SERVICE_NAME, payload, { timeout: 1000}, (err, result) => {
       if (err) throw err
-      console.log('event broadcasted');
     });
   }
 

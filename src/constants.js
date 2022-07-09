@@ -7,3 +7,5 @@ export const ORDER_LOCK= 'ORDER_LOCK';
 export const ORDER_CLOSED= 'ORDER_CLOSED'
 
 export const SERVICE_NAME = 'order_worker';
+
+export const COINS = ['ETH', 'BNB', 'BTC', 'ADA']  
